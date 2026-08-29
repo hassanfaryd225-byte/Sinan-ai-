@@ -5,7 +5,7 @@ import datetime
 # --- CONFIGURATION DE LA PAGE ---
 st.set_page_config(page_title="SINAN AI — Journal vocal quotidien", page_icon="📖", layout="wide")
 
-# --- DESIGN ET STYLE VISUEL (PROTOTYPE MOBILE CONFORME AUX CAPTURES) ---
+# --- DESIGN ET STYLE VISUEL (PROTOTYPE MOBILE) ---
 bg_color = "#12151B"      
 card_bg_color = "#1E222A" 
 text_color = "#EDE7D3"    
@@ -56,7 +56,7 @@ if 'comptes_360' not in st.session_state:
 st.markdown("### 📖 SINAN AI")
 st.markdown("<p style='color: #9CA3AE; margin-top: -10px;'>Journal vocal quotidien & Consolidation 360°</p>", unsafe_allow_html=True)
 
-# Sélecteur de langue (Français, English, Nouchi, Dioula)
+# Sélecteur de langue
 langues = ["Français", "English", "Nouchi", "Dioula"]
 cols_lang = st.columns(4)
 for i, l in enumerate(langues):
@@ -66,7 +66,7 @@ for i, l in enumerate(langues):
 
 st.write("")
 
-# Navigation principale sous forme de boutons (style visuel des captures)
+# Navigation principale
 menu_items = ["Journal", "Projets", "Finances perso", "Dettes & Créances", "Trésorerie 360°", "Tontine & Cotisations", "Coach IA"]
 selected_tab = st.radio("Navigation", menu_items, horizontal=True, label_visibility="collapsed")
 st.session_state.onglet_actif = selected_tab
@@ -79,13 +79,11 @@ st.write("---")
 if st.session_state.onglet_actif == "Journal":
     st.markdown("#### 🎙️ Enregistrement en temps réel")
     
-    # Bouton micro central simulé avec support vocal
     col_m1, col_m2, col_m3 = st.columns([1, 2, 1])
     with col_m2:
         if st.button("🎤 Micro prêt — Appuyez pour parler", use_container_width=True):
-            st.info("🎙️ Enregistrement vocal actif... (Transcription en cours selon la langue : " + st.session_state.langue + ")")
+            st.info("🎙️ Enregistrement vocal actif...")
 
-    # Saisie texte alternative avec bouton micro intégré
     with st.form("form_journal", clear_on_submit=True):
         saisie_texte = st.text_input("Ou tapez votre opération", placeholder="Ex: j'ai vendu du riz pour 15000 francs")
         col_sub1, col_sub2 = st.columns([3, 1])
@@ -110,7 +108,6 @@ if st.session_state.onglet_actif == "Journal":
 
     st.write("---")
     
-    # Indicateurs du jour
     df_j = pd.DataFrame(st.session_state.journal)
     recettes_tot = df_j[df_j['type'] == 'Recette']['montant'].sum() if not df_j.empty else 0
     depenses_tot = df_j[df_j['type'] == 'Dépense']['montant'].sum() if not df_j.empty else 0
@@ -148,7 +145,6 @@ elif st.session_state.onglet_actif == "Projets":
 elif st.session_state.onglet_actif == "Finances perso":
     st.subheader("🏠 Finances Personnelles & Budget Familial")
     st.metric("Budget Perso Disponible", "320 000 F CFA")
-    st.write("Suivi séparé des dépenses familiales et personnelles hors SYSCOHADA strict.")
 
 # ==========================================
 # 4. MODULE DETTES & CRÉANCES
@@ -169,12 +165,12 @@ elif st.session_state.onglet_actif == "Dettes & Créances":
     st.write("#### Enregistrer un engagement")
     with st.form("form_dette"):
         type_d = st.selectbox("Type", ["Je dois (dette)", "On me doit (créance)"])
-         tiers_nom = st.text_input("Nom du fournisseur / client")
-         montant_d = st.number_input("Montant total", min_value=0, step=1000)
-         echeance_d = st.date_input("Date d'échéance")
-         if st.form_submit_button("Enregistrer"):
-             st.session_state.dettes.append({"tiers": tiers_nom, "type": "Dette" if "dois" in type_d else "Créance", "montant": montant_d, "regle": 0, "echeance": str(echeance_d), "statut": "en_cours"})
-             st.success("Enregistré avec succès !")
+        tiers_nom = st.text_input("Nom du fournisseur / client")
+        montant_d = st.number_input("Montant total", min_value=0, step=1000)
+        echeance_d = st.date_input("Date d'échéance")
+        if st.form_submit_button("Enregistrer"):
+            st.session_state.dettes.append({"tiers": tiers_nom, "type": "Dette" if "dois" in type_d else "Créance", "montant": montant_d, "regle": 0, "echeance": str(echeance_d), "statut": "en_cours"})
+            st.success("Enregistré avec succès !")
 
     st.write("#### Suivi des tiers")
     for d in st.session_state.dettes:
@@ -187,12 +183,10 @@ elif st.session_state.onglet_actif == "Dettes & Créances":
         """, unsafe_allow_html=True)
 
 # ==========================================
-# 5. MODULE TRÉSORERIE 360° & PASSERELLE FINANCIÈRE
+# 5. MODULE TRÉSORERIE 360°
 # ==========================================
 elif st.session_state.onglet_actif == "Trésorerie 360°":
     st.subheader("💳 Passerelle Financière & Trésorerie 360°")
-    st.write("Agrégation en temps réel : Wave, Orange Money, Moov Money, MTN MoMo, Djamo, Cartes bancaires et Cash.")
-    
     total_360 = sum(st.session_state.comptes_360.values())
     st.metric("Trésorerie Globale Consolidée", f"{total_360:,.0f} F CFA")
     
@@ -213,8 +207,6 @@ elif st.session_state.onglet_actif == "Trésorerie 360°":
 # ==========================================
 elif st.session_state.onglet_actif == "Tontine & Cotisations":
     st.subheader("👥 Module Tontine & Cotisations de Groupe")
-    st.write("Gérez vos tontines tournantes, épargnes collectives et cotisations professionnelles.")
-    
     with st.form("form_tontine"):
         nom_tontine = st.text_input("Nom du cercle de tontine / cotisation")
         montant_part = st.number_input("Montant de la part / cotisation (F)", min_value=0, step=5000)
@@ -237,18 +229,14 @@ elif st.session_state.onglet_actif == "Tontine & Cotisations":
         st.info("Aucun cercle de tontine enregistré.")
 
 # ==========================================
-# 7. MODULE COACH IA & STRATÉGIE GLOBALE
+# 7. MODULE COACH IA
 # ==========================================
 elif st.session_state.onglet_actif == "Coach IA":
     st.subheader("🤖 Coach Financier & Analyse Stratégique")
-    st.write("Analyse consolidée à 360° de vos performances et propositions de stratégies sur une durée.")
-    
     if st.button("Lancer l'analyse globale par le Coach IA"):
         st.markdown("""
         ### 📊 Diagnostic Stratégique Consolidé
-        - **Liquidités 360° :** Saines, mais forte concentration sur les comptes Mobile Money.
-        - **Alerte Tiers :** Un encours en retard (Konate service - 1 000 000 F) nécessite une relance immédiate pour préserver le fonds de roulement.
-        - **Recommandation :** Automatiser les transferts de trésorerie excédentaire vers le compte bancaire principal et structurer les apports de tontines dans le journal pro.
+        - **Liquidités 360° :** Saines, forte présence Mobile Money.
+        - **Alerte Tiers :** Encours en retard sur Konate service (1 000 000 F).
         """)
-    
-    st.text_input("💬 Posez une question libre au coach financier", placeholder="Ex: Est-ce que je peux financer cet achat de stock ?")
+    st.text_input("💬 Posez une question libre au coach financier")
