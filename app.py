@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import datetime
-from io import BytesIO
 
 # --- CONFIGURATION DE LA PAGE ---
 st.set_page_config(page_title="SINAN AI — Assistant Comptable & Financier", page_icon="S", layout="wide")
@@ -86,33 +85,6 @@ if 'comptes_360' not in st.session_state:
         "Djamo / Cartes": 20000
     }
 
-# --- BARRE LATÉRALE : AUTHENTIFICATION & CONFIGURATION GROUPE ---
-with st.sidebar:
-    st.subheader("🔐 Accès & Sécurité SINAN AI")
-    if not st.session_state.logged_in:
-        phone_input = st.text_input("Numéro de téléphone", placeholder="+225 0700000000")
-        role_input = st.selectbox("Rôle dans le compte de groupe", ["Propriétaire", "Caissier / Gestionnaire", "Associé / Validateur"])
-        if st.button("Se connecter / S'identifier"):
-            if phone_input:
-                st.session_state.logged_in = True
-                st.session_state.user_phone = phone_input
-                st.session_state.role_utilisateur = role_input
-                st.rerun()
-            else:
-                st.error("Veuillez entrer un numéro valide.")
-    else:
-        st.success(f"Connecté : {st.session_state.user_phone}")
-        st.info(f"Rôle : {st.session_state.role_utilisateur}")
-        if st.button("Déconnexion"):
-            st.session_state.logged_in = False
-            st.rerun()
-
-    st.write("---")
-    st.subheader("📶 Mode & Passerelle")
-    mode_hors_ligne = st.checkbox("Activer le Mode Hors Ligne (Cache local)", value=False)
-    if mode_hors_ligne:
-        st.warning("Mode hors-ligne actif : les écritures seront synchronisées au retour du réseau.")
-
 # --- EN-TÊTE PRINCIPAL ---
 col1, col2 = st.columns([1, 6])
 with col1:
@@ -123,10 +95,33 @@ with col2:
 
 st.write("---")
 
+# --- MODULE D'AUTHENTIFICATION DIRECT (CENTRAL) ---
 if not st.session_state.logged_in:
-    st.warning("Veuillez vous identifier via votre numéro de téléphone dans la barre latérale pour accéder aux modules de gestion.")
+    st.subheader("🔐 Identifiez-vous pour commencer")
+    with st.form("auth_form"):
+        phone_input = st.text_input("Votre numéro de téléphone", placeholder="+225 0700000000")
+        role_input = st.selectbox("Votre rôle dans le compte de groupe", ["Propriétaire", "Caissier / Gestionnaire", "Associé / Validateur"])
+        submit_auth = st.form_submit_button("Se connecter / Accéder à l'application")
+        
+        if submit_auth:
+            if phone_input:
+                st.session_state.logged_in = True
+                st.session_state.user_phone = phone_input
+                st.session_state.role_utilisateur = role_input
+                st.rerun()
+            else:
+                st.error("Veuillez entrer un numéro de téléphone valide.")
 else:
-    # --- NAVIGATION PAR ESPACES ET MODULES ---
+    # Barre de statut connectée + Option de déconnexion
+    c_info1, c_info2 = st.columns([4, 1])
+    with c_info1:
+        st.success(f"Connecté : {st.session_state.user_phone} ({st.session_state.role_utilisateur})")
+    with c_info2:
+        if st.button("Déconnexion"):
+            st.session_state.logged_in = False
+            st.rerun()
+
+    st.write("")
     espace_type = st.radio("Sélectionner l'espace d'activité", ["Espace Professionnel (SYSCOHADA strict)", "Espace Personnel (Budget simplifié)"], horizontal=True)
 
     st.write("")
@@ -142,12 +137,12 @@ else:
 
     with tab1:
         st.subheader("🎙️ Saisie Vocale et Manuelle Multi-modules")
-        st.info("💡 Astuce : Utilisez le microphone intégré de votre clavier (Dictée vocale) dans chaque champ textuel ci-dessous si le navigateur restreint l'accès direct.")
+        st.info("💡 Astuce mobile : Utilisez le micro de votre clavier virtuel pour dicter vos textes dans les champs ci-dessous.")
         
         with st.form("entry_form", clear_on_submit=True):
             col_f1, col_f2 = st.columns(2)
             with col_f1:
-                desc_input = st.text_input("🎙️ Description / Libellé de l'opération", placeholder="Ex: Achat marchandises ou règlement facture")
+                desc_input = st.text_input("🎙️ Description / Libellé de l'opération", placeholder="Ex: Achat marchandises")
                 type_mouvement = st.selectbox("Sens de l'opération", ["Recette / Produit (Classe 7)", "Dépense / Charge (Classe 6)"])
                 projet_choisi = st.selectbox("Nomination & Séparation du projet", st.session_state.projets)
             with col_f2:
@@ -157,14 +152,13 @@ else:
                     "Moov Money", "Djamo", "Compte Bancaire", "Carte Bancaire / App Pay"
                 ])
                 
-            submitted = st.form_submit_button("Enregistrer l'opération (Synchro Temps Réel Groupe)")
+            submitted = st.form_submit_button("Enregistrer l'opération")
             
             if submitted and desc_input and montant_input > 0:
                 date_str = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
                 sens_val = "Recette" if "Recette" in type_mouvement else "Dépense"
                 compte = "707 - Ventes de marchandises" if sens_val == "Recette" else "6051 - Fournitures & Services"
                 
-                # Mise à jour des comptes 360 selon la passerelle
                 if passerelle_source in st.session_state.comptes_360:
                     if sens_val == "Recette":
                         st.session_state.comptes_360[passerelle_source] += montant_input
@@ -190,12 +184,10 @@ else:
                         "Source": passerelle_source,
                         "Montant": montant_input
                     })
-                st.success("Opération enregistrée et partagée en temps réel avec le groupe (Caissier / Propriétaire) !")
+                st.success("Opération enregistrée avec succès !")
 
     with tab2:
         st.subheader("🏦 Consolidation 360° (Mobile Money, Banques & Cash)")
-        st.write("Vue consolidée globale de tous vos comptes et passerelles de paiement connectés.")
-        
         total_360 = sum(st.session_state.comptes_360.values())
         st.metric("Trésorerie Globale Consolidée", f"{total_360:,.0f} F CFA")
         
@@ -219,11 +211,7 @@ else:
                 st.info("Aucune écriture enregistrée.")
             else:
                 projet_filtre = st.selectbox("Filtrer par projet analytique", ["Tous les projets"] + st.session_state.projets)
-                if projet_filtre != "Tous les projets":
-                    df_affiche = df[df['Projet'] == projet_filtre]
-                else:
-                    df_affiche = df
-                
+                df_affiche = df[df['Projet'] == projet_filtre] if projet_filtre != "Tous les projets" else df
                 st.dataframe(df_affiche.style.format({'Montant': '{:,.0f} F'}), use_container_width=True)
         else:
             df_perso = pd.DataFrame(st.session_state.operations_perso)
@@ -233,7 +221,7 @@ else:
                 st.dataframe(df_perso.style.format({'Montant': '{:,.0f} F'}), use_container_width=True)
 
     with tab4:
-        st.subheader("🤝 Gestion des Tiers, Dettes & Créances (Classes SYSCOHADA)")
+        st.subheader("🤝 Gestion des Tiers, Dettes & Créances")
         with st.form("debt_form", clear_on_submit=True):
             c1, c2, c3 = st.columns(3)
             with c1:
@@ -244,17 +232,14 @@ else:
                 dette_montant = st.number_input("Montant initial (F)", min_value=0, step=1000)
                 
             echeance_date = st.date_input("Date d'échéance")
-            submit_debt = st.form_submit_button("Enregistrer l'engagement tiers")
+            submit_debt = st.form_submit_button("Enregistrer l'engagement")
             
             if submit_debt and tiers_nom and dette_montant > 0:
                 st.session_state.dettes_creances.append({
-                    "Tiers": tiers_nom,
-                    "Type": dette_type,
-                    "Montant": dette_montant,
-                    "Échéance": str(echeance_date),
-                    "Statut": "En cours"
+                    "Tiers": tiers_nom, "Type": dette_type, "Montant": dette_montant,
+                    "Échéance": str(echeance_date), "Statut": "En cours"
                 })
-                st.success("Tiers enregistré avec succès.")
+                st.success("Engagement tiers enregistré.")
 
         df_dettes = pd.DataFrame(st.session_state.dettes_creances)
         if not df_dettes.empty:
@@ -265,83 +250,44 @@ else:
     with tab5:
         st.subheader("📄 Facturation FNE (Conforme DGI Côte d'Ivoire)")
         with st.form("fne_form"):
-            f_client = st.text_input("Nom ou Raison Sociale du Client", "Client Partenaire")
-            f_ifu = st.text_input("Numéro de Compte Contribuable (NCC / IFU)", "CI-0000000X")
-            f_item = st.text_input("Désignation de la prestation / service", "Prestation commerciale")
+            f_client = st.text_input("Nom du Client", "Client Partenaire")
+            f_ifu = st.text_input("Numéro de Compte Contribuable (NCC)", "CI-0000000X")
+            f_item = st.text_input("Désignation de la prestation", "Prestation commerciale")
             f_ht = st.number_input("Montant Hors TVA (F)", min_value=0, step=1000, value=50000)
-            
             gen_fne = st.form_submit_button("Générer le spécimen FNE")
             
         if gen_fne:
             tva = f_ht * 0.18
             ttc = f_ht + tva
             spec_id = datetime.datetime.now().strftime("FNE-%Y%m%d-%H%M")
-            
             st.markdown(f"""
             <div style="background: #FFFFFF; color: #000000; padding: 25px; border-radius: 8px;">
                 <h3 style="text-align: center; color: #111;">FACTURE NORMALISÉE ÉLECTRONIQUE (Brouillon FNE)</h3>
                 <hr>
                 <p><b>N° Spécimen :</b> {spec_id}</p>
                 <p><b>Client :</b> {f_client} | <b>NCC :</b> {f_ifu}</p>
-                <p><b>Date :</b> {datetime.datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
-                <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
-                    <tr style="border-bottom: 2px solid #000;">
-                        <th style="text-align: left; padding: 6px;">Désignation</th>
-                        <th style="text-align: right; padding: 6px;">Montant HT</th>
-                    </tr>
-                    <tr>
-                        <td style="padding: 6px;">{f_item}</td>
-                        <td style="text-align: right; padding: 6px;">{f_ht:,.0f} F</td>
-                    </tr>
-                </table>
-                <br>
-                <p style="text-align: right;"><b>Total HT :</b> {f_ht:,.0f} F</p>
-                <p style="text-align: right;"><b>TVA (18%) :</b> {tva:,.0f} F</p>
+                <p><b>Total HT :</b> {f_ht:,.0f} F | <b>TVA (18%) :</b> {tva:,.0f} F</p>
                 <h3 style="text-align: right; color: #D35400;">TOTAL TTC : {ttc:,.0f} F CFA</h3>
-                <hr>
-                <div style="text-align: center; font-size: 0.8em; color: #555;">
-                    [ Zone QR Code de certification DGI FNE ]<br>
-                    <i>Spécimen généré par SINAN AI — En attente de validation API DGI</i>
-                </div>
             </div>
             """, unsafe_allow_html=True)
 
     with tab6:
         st.subheader("🤖 Coach Financier & Analyse Stratégique Globale")
-        st.write("Analyse globale de votre situation financière sur la période et propositions de stratégies sur mesure.")
-        
-        if st.button("Lancer l'analyse globale et la stratégie IA"):
+        if st.button("Lancer l'analyse globale"):
             tot_rec = sum([x['Montant'] for x in st.session_state.ecritures_pro if x['Sens'] == 'Recette'])
             tot_dep = sum([x['Montant'] for x in st.session_state.ecritures_pro if x['Sens'] == 'Dépense'])
-            solde_net = tot_rec - tot_dep
-            
             st.markdown(f"""
-            ### 📋 Rapport d'Analyse Globale (Consolidation 360°)
-            - **Trésorerie disponible totale :** `{sum(st.session_state.comptes_360.values()):,.0f} F CFA`
-            - **Produits totaux enregistrés :** `{tot_rec:,.0f} F CFA`
-            - **Charges totales enregistrées :** `{tot_dep:,.0f} F CFA`
-            - **Résultat net provisoire :** `{solde_net:,.0f} F CFA`
-
-            #### 💡 Propositions de Stratégies Recommandées :
-            1. **Optimisation des flux Mobile Money :** Vos comptes Wave et Orange Money concentrent une part importante de liquidités non rémunérées. Il est conseillé de programmer des transferts automatiques vers le compte bancaire principal pour sécuriser le fonds de roulement.
-            2. **Maîtrise analytique par projet :** Poursuivez la séparation stricte de vos projets (ex: Neema Ferme vs Chantier Angré) pour identifier rapidement le centre de profit le plus performant.
-            3. **Gestion des échéances tiers :** Veillez à apurer les créances clients en retard pour maintenir un ratio de liquidité conforme aux exigences SYSCOHADA.
+            ### 📋 Rapport d'Analyse Globale
+            - **Trésorerie 360° :** `{sum(st.session_state.comptes_360.values()):,.0f} F CFA`
+            - **Résultat net :** `{tot_rec - tot_dep:,.0f} F CFA`
+            - **Recommandation :** Consolidez vos flux Wave et Orange Money vers votre compte bancaire principal et maintenez le suivi analytique par projet.
             """)
 
     with tab7:
-        st.subheader("📤 Export Tabulaire des Données")
-        if "Professionnel" in espace_type:
-            df_export = pd.DataFrame(st.session_state.ecritures_pro)
-        else:
-            df_export = pd.DataFrame(st.session_state.operations_perso)
-            
+        st.subheader("📤 Export Tabulaire")
+        df_export = pd.DataFrame(st.session_state.ecritures_pro) if "Professionnel" in espace_type else pd.DataFrame(st.session_state.operations_perso)
         if not df_export.empty:
             csv_data = df_export.to_csv(index=False, sep=';').encode('utf-8-sig')
-            st.download_button(
-                label="📥 Télécharger le Grand Livre / Journal (CSV Excel FR)",
-                data=csv_data,
-                file_name=f"sinan_ai_export_{datetime.datetime.now().strftime('%Y%m%d')}.csv",
-                mime="text/csv"
-            )
+            st.download_button("📥 Télécharger le Grand Livre (CSV)", data=csv_data, file_name="export_sinan.csv", mime="text/csv")
         else:
-            st.info("Aucune donnée disponible à l'exportation.")
+            st.info("Rien à exporter pour l'instant.")
