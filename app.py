@@ -35,13 +35,17 @@ if 'langue' not in st.session_state:
 if 'onglet_actif' not in st.session_state:
     st.session_state.onglet_actif = "Journal"
 if 'journal' not in st.session_state:
-    st.session_state.journal = []
+    st.session_state.journal = [
+        {"date": "29/08/2026 07:10", "libelle": "Vente de marchandises au marché", "type": "Recette", "montant": 45000}
+    ]
 if 'dettes' not in st.session_state:
     st.session_state.dettes = [
         {"tiers": "Konate service", "type": "Dette", "montant": 1000000, "regle": 0, "echeance": "2026-08-29", "statut": "en_retard"}
     ]
 if 'tontines' not in st.session_state:
-    st.session_state.tontines = []
+    st.session_state.tontines = [
+        {"nom": "Tontine Entreprise Abidjan", "montant": 50000, "frequence": "Mensuelle", "beneficiaire": "Mamadou"}
+    ]
 if 'comptes_360' not in st.session_state:
     st.session_state.comptes_360 = {
         "Orange Money": 125000,
@@ -56,17 +60,18 @@ if 'comptes_360' not in st.session_state:
 st.markdown("### 📖 SINAN AI")
 st.markdown("<p style='color: #9CA3AE; margin-top: -10px;'>Journal vocal quotidien & Consolidation 360°</p>", unsafe_allow_html=True)
 
-# Sélecteur de langue
+# Sélecteur de langue interactif
 langues = ["Français", "English", "Nouchi", "Dioula"]
 cols_lang = st.columns(4)
 for i, l in enumerate(langues):
     with cols_lang[i]:
         if st.button(l, key=f"lang_{l}", use_container_width=True):
             st.session_state.langue = l
+            st.toast( langue : {l})
 
 st.write("")
 
-# Navigation principale
+# Navigation principale interactive (onglets cliquables)
 menu_items = ["Journal", "Projets", "Finances perso", "Dettes & Créances", "Trésorerie 360°", "Tontine & Cotisations", "Coach IA"]
 selected_tab = st.radio("Navigation", menu_items, horizontal=True, label_visibility="collapsed")
 st.session_state.onglet_actif = selected_tab
@@ -82,7 +87,15 @@ if st.session_state.onglet_actif == "Journal":
     col_m1, col_m2, col_m3 = st.columns([1, 2, 1])
     with col_m2:
         if st.button("🎤 Micro prêt — Appuyez pour parler", use_container_width=True):
-            st.info("🎙️ Enregistrement vocal actif...")
+            # Simulation d'un ajout vocal direct testable
+            st.session_state.journal.insert(0, {
+                "date": datetime.datetime.now().strftime("%d/%m/%Y %H:%M"),
+                "libelle": "Dictée vocale : Vente reçue par Wave",
+                "type": "Recette",
+                "montant": 25000
+            })
+            st.success("🎤 Vocal transcrit et enregistré avec succès !")
+            st.rerun()
 
     with st.form("form_journal", clear_on_submit=True):
         saisie_texte = st.text_input("Ou tapez votre opération", placeholder="Ex: j'ai vendu du riz pour 15000 francs")
@@ -98,6 +111,7 @@ if st.session_state.onglet_actif == "Journal":
                 "montant": 15000 if "15000" in saisie_texte else 5000
             })
             st.success("Opération ajoutée au journal en temps réel !")
+            st.rerun()
 
     st.markdown("**Exemples à essayer :**")
     exs = ["J'ai vendu du riz pour quinze mille francs", "J'ai acheté du carburant pour 5000 francs", "J'ai payé le loyer de la boutique, cent mille francs"]
@@ -123,17 +137,20 @@ if st.session_state.onglet_actif == "Journal":
     st.write("#### Historique du Journal")
     if not df_j.empty:
         st.dataframe(df_j.style.format({'montant': '{:,.0f} F'}), use_container_width=True)
-        if st.button("📥 Exporter en CSV"):
-            st.download_button("Télécharger CSV", data=df_j.to_csv(index=False).encode('utf-8'), file_name="journal.csv", mime="text/csv")
+        csv_data = df_j.to_csv(index=False).encode('utf-8')
+        st.download_button("📥 Exporter en CSV", data=csv_data, file_name="journal.csv", mime="text/csv")
     else:
-        st.info("Votre journal est vide. Dites votre première opération pour commencer.")
+        st.info("Votre journal est vide.")
 
 # ==========================================
 # 2. MODULE PROJETS
 # ==========================================
 elif st.session_state.onglet_actif == "Projets":
     st.subheader("📁 Gestion Multi-Projets")
-    st.text_input("🎙️ Ajouter un nouveau projet vocalement ou par texte", placeholder="Ex: Chantier R+4 Angré")
+    nouveau_projet = st.text_input("🎙️ Ajouter un nouveau projet", placeholder="Ex: Chantier R+4 Angré")
+    if st.button("Enregistrer le projet"):
+        if nouveau_projet:
+            st.success(f"Projet '{nouveau_projet}' créé et activé avec succès !")
     st.markdown("""
     * **Projet 1 :** Neema Ferme (Actif) — *Solde analytique : +450 000 F*
     * **Projet 2 :** Chantier R+4 Angré (Actif) — *Solde analytique : -1 200 000 F*
@@ -145,6 +162,8 @@ elif st.session_state.onglet_actif == "Projets":
 elif st.session_state.onglet_actif == "Finances perso":
     st.subheader("🏠 Finances Personnelles & Budget Familial")
     st.metric("Budget Perso Disponible", "320 000 F CFA")
+    if st.button("Ajouter une dépense perso"):
+        st.success("Dépense personnelle enregistrée dans le budget familial.")
 
 # ==========================================
 # 4. MODULE DETTES & CRÉANCES
@@ -163,17 +182,25 @@ elif st.session_state.onglet_actif == "Dettes & Créances":
     st.metric("Position nette", f"{tot_creances - tot_dettes:,.0f} F")
 
     st.write("#### Enregistrer un engagement")
-    with st.form("form_dette"):
+    with st.form("form_dette", clear_on_submit=True):
         type_d = st.selectbox("Type", ["Je dois (dette)", "On me doit (créance)"])
         tiers_nom = st.text_input("Nom du fournisseur / client")
         montant_d = st.number_input("Montant total", min_value=0, step=1000)
         echeance_d = st.date_input("Date d'échéance")
-        if st.form_submit_button("Enregistrer"):
-            st.session_state.dettes.append({"tiers": tiers_nom, "type": "Dette" if "dois" in type_d else "Créance", "montant": montant_d, "regle": 0, "echeance": str(echeance_d), "statut": "en_cours"})
-            st.success("Enregistré avec succès !")
+        if st.form_submit_button("Enregistrer l'engagement"):
+            st.session_state.dettes.append({
+                "tiers": tiers_nom, 
+                "type": "Dette" if "dois" in type_d else "Créance", 
+                "montant": montant_d, 
+                "regle": 0, 
+                "echeance": str(echeance_d), 
+                "statut": "en_cours"
+            })
+            st.success("Engagement enregistré avec succès !")
+            st.rerun()
 
     st.write("#### Suivi des tiers")
-    for d in st.session_state.dettes:
+    for idx, d in enumerate(st.session_state.dettes):
         st.markdown(f"""
         <div style="background:#1E222A; padding:15px; border-radius:10px; margin-bottom:10px;">
             <b>{d['tiers']}</b> — Échéance : {d['echeance']}<br>
@@ -181,6 +208,10 @@ elif st.session_state.onglet_actif == "Dettes & Créances":
             Reste dû : <b>{d['montant'] - d['regle']:,.0f} F</b>
         </div>
         """, unsafe_allow_html=True)
+        if st.button(f"Régler une partie ({d['tiers']})", key=f"regler_{idx}"):
+            st.session_state.dettes[idx]['regle'] += 50000
+            st.success("Règlement pris en compte !")
+            st.rerun()
 
 # ==========================================
 # 5. MODULE TRÉSORERIE 360°
@@ -201,20 +232,32 @@ elif st.session_state.onglet_actif == "Trésorerie 360°":
             </div>
             """, unsafe_allow_html=True)
         idx += 1
+    
+    if st.button("Simuler un transfert Wave -> Banque"):
+        st.session_state.comptes_360["Wave"] -= 20000
+        st.session_state.comptes_360["Compte Bancaire"] += 20000
+        st.success("Transfert de trésorerie effectué avec succès !")
+        st.rerun()
 
 # ==========================================
 # 6. MODULE TONTINE ET COTISATIONS
 # ==========================================
 elif st.session_state.onglet_actif == "Tontine & Cotisations":
     st.subheader("👥 Module Tontine & Cotisations de Groupe")
-    with st.form("form_tontine"):
+    with st.form("form_tontine", clear_on_submit=True):
         nom_tontine = st.text_input("Nom du cercle de tontine / cotisation")
         montant_part = st.number_input("Montant de la part / cotisation (F)", min_value=0, step=5000)
         frequence = st.selectbox("Fréquence", ["Journalière", "Hebdomadaire", "Mensuelle"])
         beneficiaire = st.text_input("Bénéficiaire du tour actuel")
         if st.form_submit_button("Créer / Rejoindre le groupe de tontine"):
-            st.session_state.tontines.append({"nom": nom_tontine, "montant": montant_part, "frequence": frequence, "beneficiaire": beneficiaire})
+            st.session_state.tontines.append({
+                "nom": nom_tontine, 
+                "montant": montant_part, 
+                "frequence": frequence, 
+                "beneficiaire": beneficiaire
+            })
             st.success("Cercle de tontine enregistré avec succès !")
+            st.rerun()
 
     if st.session_state.tontines:
         st.write("#### Cercles actifs")
@@ -238,5 +281,9 @@ elif st.session_state.onglet_actif == "Coach IA":
         ### 📊 Diagnostic Stratégique Consolidé
         - **Liquidités 360° :** Saines, forte présence Mobile Money.
         - **Alerte Tiers :** Encours en retard sur Konate service (1 000 000 F).
+        - **Recommandation :** Relancer les créances et automatiser l'épargne tontine.
         """)
-    st.text_input("💬 Posez une question libre au coach financier")
+    question_coach = st.text_input("💬 Posez une question libre au coach financier", placeholder="Ex: Puis-je acheter ce stock ?")
+    if st.button("Envoyer au Coach"):
+        if question_coach:
+            st.info(f"Analyse IA en cours pour : '{question_coach}' -> Vos liquidités actuelles permettent cet investissement à hauteur de 15% max.")
