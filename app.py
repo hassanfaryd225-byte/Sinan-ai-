@@ -3,8 +3,6 @@ import pandas as pd
 import datetime
 import base64
 from io import BytesIO
-%%writefile app.py
-import streamlit as st
 
 st.set_page_config(page_title="SINAN AI", page_icon="🎙️", layout="centered")
 
